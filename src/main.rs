@@ -116,11 +116,7 @@ fn get_sizes(x: Vec<u8>, k: CompressionKind) -> io::Result<CompressionResult> {
             let br = compress::brotli(&x)?.len();
             let gz = compress::gzip(&x.clone())?.len();
             let raw = x.len();
-            Ok(CompressionResult::All {
-                br: br,
-                gz: gz,
-                raw: raw,
-            })
+            Ok(CompressionResult::All { br, gz, raw })
         }
     }
 }
