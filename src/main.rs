@@ -33,13 +33,13 @@ mod byte_fmt {
 mod compress {
     use flate2::write::ZlibEncoder;
     use flate2::Compression;
-
     use std::io;
     use std::io::prelude::*;
-    pub fn brotli(input: &[u8]) -> Vec<u8> {
+
+    pub fn brotli(input: &[u8]) -> io::Result<Vec<u8>> {
         let mut writer = brotli::CompressorWriter::new(Vec::new(), 4096, 11, 22);
-        writer.write_all(input).unwrap();
-        writer.into_inner()
+        writer.write_all(input)?;
+        Result::Ok(writer.into_inner())
     }
     pub fn gzip(input: &[u8]) -> io::Result<Vec<u8>> {
         let mut gz_enc = ZlibEncoder::new(Vec::new(), Compression::best());
@@ -98,14 +98,14 @@ enum CompressionResult {
 fn get_sizes(x: Vec<u8>, k: CompressionKind) -> io::Result<CompressionResult> {
     match k {
         CompressionKind::Gz => {
-            let gz_b = compress::gzip(&x.clone())?;
+            let gz_b = compress::gzip(&x)?.len();
 
-            Ok(CompressionResult::Gz(gz_b.len()))
+            Ok(CompressionResult::Gz(gz_b))
         }
         CompressionKind::Br => {
-            let br_b = compress::brotli(&x);
+            let br_b = compress::brotli(&x)?.len();
 
-            Ok(CompressionResult::Br(br_b.len()))
+            Ok(CompressionResult::Br(br_b))
         }
         CompressionKind::Raw => {
             let raw_b = x.len();
@@ -113,7 +113,7 @@ fn get_sizes(x: Vec<u8>, k: CompressionKind) -> io::Result<CompressionResult> {
             Ok(CompressionResult::Raw(raw_b))
         }
         CompressionKind::All => {
-            let br = compress::brotli(&x).len();
+            let br = compress::brotli(&x)?.len();
             let gz = compress::gzip(&x.clone())?.len();
             let raw = x.len();
             Ok(CompressionResult::All {
