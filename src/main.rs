@@ -5,6 +5,8 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
+#[macro_use]
+extern crate prettytable;
 
 mod byte_fmt {
     use std::cmp;
@@ -77,9 +79,16 @@ fn main() -> io::Result<()> {
         let contents = read_input_mod(&file)?;
         match get_sizes(contents, args.kind)? {
             CompressionResult::All { raw, br, gz } => {
-                println!("  raw: {}", byte_fmt::pretty(raw as f64));
-                println!("  br : {}", byte_fmt::pretty(br as f64));
-                println!("  gz : {}", byte_fmt::pretty(gz as f64));
+                let table = table!(
+                    ["raw", "gzip", "brotli"],
+                    [
+                        byte_fmt::pretty(raw as f64),
+                        byte_fmt::pretty(br as f64),
+                        byte_fmt::pretty(gz as f64)
+                    ]
+                );
+
+                table.printstd();
             }
             CompressionResult::Br(b) | CompressionResult::Gz(b) | CompressionResult::Raw(b) => {
                 println!("  {:?}: {}", args.kind, byte_fmt::pretty(b as f64));
