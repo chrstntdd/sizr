@@ -1,4 +1,3 @@
-use ansi_term::Style;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -7,6 +6,7 @@ use structopt::clap::arg_enum;
 use structopt::StructOpt;
 #[macro_use]
 extern crate prettytable;
+use prettytable::{Cell, Row, Table};
 
 mod byte_fmt {
     use std::cmp;
@@ -73,28 +73,38 @@ struct Cli {
 
 fn main() -> io::Result<()> {
     let args = Cli::from_args();
+    let mut table = Table::new();
+    let mut has_labels = false;
 
     for file in args.files {
-        println!("{}", Style::new().bold().paint(format!("{:?}", &file)));
         let contents = read_input_mod(&file)?;
+        let file_name = &file.to_str().expect("Unable to read the file path");
         match get_sizes(contents, args.kind)? {
             CompressionResult::All { raw, br, gz } => {
-                let table = table!(
-                    ["raw", "gzip", "brotli"],
-                    [
-                        byte_fmt::pretty(raw as f64),
-                        byte_fmt::pretty(br as f64),
-                        byte_fmt::pretty(gz as f64)
-                    ]
-                );
-
-                table.printstd();
+                if has_labels == false {
+                    table.add_row(row!["name", "raw", "gzip", "brotli"]);
+                    has_labels = true
+                };
+                table.add_row(Row::new(vec![
+                    Cell::new(file_name),
+                    Cell::new(&byte_fmt::pretty(raw as f64)),
+                    Cell::new(&byte_fmt::pretty(br as f64)),
+                    Cell::new(&byte_fmt::pretty(gz as f64)),
+                ]));
             }
             CompressionResult::Br(b) | CompressionResult::Gz(b) | CompressionResult::Raw(b) => {
-                println!("  {:?}: {}", args.kind, byte_fmt::pretty(b as f64));
+                if has_labels == false {
+                    table.add_row(row!["name", args.kind]);
+                    has_labels = true
+                };
+                table.add_row(Row::new(vec![
+                    Cell::new(file_name),
+                    Cell::new(&byte_fmt::pretty(b as f64)),
+                ]));
             }
         };
     }
+    table.printstd();
 
     Ok(())
 }
