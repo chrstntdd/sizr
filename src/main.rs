@@ -1,3 +1,4 @@
+use ansi_term::Style;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -72,15 +73,16 @@ fn main() -> io::Result<()> {
     let args = Cli::from_args();
 
     for file in args.files {
+        println!("{}", Style::new().bold().paint(format!("{:?}", &file)));
         let contents = read_input_mod(&file)?;
         match get_sizes(contents, args.kind)? {
             CompressionResult::All { raw, br, gz } => {
-                println!("raw: {}", byte_fmt::pretty(raw as f64));
-                println!("br: {}", byte_fmt::pretty(br as f64));
-                println!("gz: {}", byte_fmt::pretty(gz as f64));
+                println!("  raw: {}", byte_fmt::pretty(raw as f64));
+                println!("  br : {}", byte_fmt::pretty(br as f64));
+                println!("  gz : {}", byte_fmt::pretty(gz as f64));
             }
             CompressionResult::Br(b) | CompressionResult::Gz(b) | CompressionResult::Raw(b) => {
-                println!("{:?}: {}", args.kind, byte_fmt::pretty(b as f64));
+                println!("  {:?}: {}", args.kind, byte_fmt::pretty(b as f64));
             }
         };
     }
