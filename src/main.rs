@@ -53,7 +53,7 @@ mod compress {
 }
 
 arg_enum! {
-    #[derive(Copy,Clone,Debug, PartialEq)]
+    #[derive(Copy,Clone,Debug)]
     enum CompressionKind {
         Gz,
         Br,
