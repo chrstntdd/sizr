@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -52,19 +53,19 @@ mod compress {
 }
 
 arg_enum! {
-    #[derive(Copy,Clone,Debug)]
+    #[derive(Copy,Clone,Debug, PartialEq)]
     enum CompressionKind {
         Gz,
         Br,
         Raw,
-        All
     }
 }
 
 #[derive(StructOpt, Debug)]
 struct Cli {
-    #[structopt(possible_values = &CompressionKind::variants(), case_insensitive = true)]
-    kind: CompressionKind,
+    /// If omitted, all 3 sizes are reported
+    #[structopt(possible_values = &CompressionKind::variants(), case_insensitive = true, value_delimiter = ",", short)]
+    kind: Option<Vec<CompressionKind>>,
 
     /// Files to process
     #[structopt(name = "FILE", parse(from_os_str))]
@@ -74,32 +75,52 @@ struct Cli {
 fn main() -> io::Result<()> {
     let args = Cli::from_args();
     let mut table = Table::new();
-    let mut has_labels = false;
+    let mut has_col_labels = false;
 
     for file in args.files {
-        let contents = read_input_mod(&file)?;
+        let contents = read_file(&file)?;
         let file_name = &file.to_str().expect("Unable to read the file path");
-        match get_sizes(contents, args.kind)? {
-            CompressionResult::All { raw, br, gz } => {
-                if has_labels == false {
-                    table.add_row(row!["name", "raw", "gzip", "brotli"]);
-                    has_labels = true
+
+        match &args.kind {
+            Some(compression_kinds) => {
+                // TODO: Prevent duplicate formats
+                // Print appropriate column labels
+                if has_col_labels == false {
+                    let mut col_labels = vec![Cell::new("name")];
+                    for el in compression_kinds {
+                        col_labels.append(&mut vec![Cell::new(&format!("{}", el))]);
+                    }
+                    table.add_row(Row::new(col_labels));
+                    has_col_labels = true
                 };
+
+                //
+                let mut size_col = vec![Cell::new(file_name)];
+                for el in compression_kinds {
+                    match get_sizes(contents.clone(), *el)? {
+                        CompressionResult::Br(b)
+                        | CompressionResult::Gz(b)
+                        | CompressionResult::Raw(b) => {
+                            size_col.append(&mut vec![Cell::new(&byte_fmt::pretty(b as f64))]);
+                        }
+                    };
+                }
+
+                table.add_row(Row::new(size_col));
+            }
+            None => {
+                if has_col_labels == false {
+                    table.add_row(row!["name", "raw", "gzip", "brotli"]);
+                    has_col_labels = true
+                };
+                let br = compress::brotli(&contents)?.len();
+                let gz = compress::gzip(&contents.clone())?.len();
+                let raw = contents.len();
                 table.add_row(Row::new(vec![
                     Cell::new(file_name),
                     Cell::new(&byte_fmt::pretty(raw as f64)),
                     Cell::new(&byte_fmt::pretty(br as f64)),
                     Cell::new(&byte_fmt::pretty(gz as f64)),
-                ]));
-            }
-            CompressionResult::Br(b) | CompressionResult::Gz(b) | CompressionResult::Raw(b) => {
-                if has_labels == false {
-                    table.add_row(row!["name", args.kind]);
-                    has_labels = true
-                };
-                table.add_row(Row::new(vec![
-                    Cell::new(file_name),
-                    Cell::new(&byte_fmt::pretty(b as f64)),
                 ]));
             }
         };
@@ -109,11 +130,21 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
+#[derive(Copy, Clone, Debug)]
 enum CompressionResult {
     Gz(usize),
     Br(usize),
     Raw(usize),
-    All { gz: usize, br: usize, raw: usize },
+}
+
+impl fmt::Display for CompressionResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            CompressionResult::Br(_) => write!(f, "br"),
+            CompressionResult::Gz(_) => write!(f, "gz"),
+            CompressionResult::Raw(_) => write!(f, "raw"),
+        }
+    }
 }
 
 fn get_sizes(x: Vec<u8>, k: CompressionKind) -> io::Result<CompressionResult> {
@@ -133,16 +164,10 @@ fn get_sizes(x: Vec<u8>, k: CompressionKind) -> io::Result<CompressionResult> {
 
             Ok(CompressionResult::Raw(raw_b))
         }
-        CompressionKind::All => {
-            let br = compress::brotli(&x)?.len();
-            let gz = compress::gzip(&x.clone())?.len();
-            let raw = x.len();
-            Ok(CompressionResult::All { br, gz, raw })
-        }
     }
 }
 
-fn read_input_mod(p: &PathBuf) -> io::Result<Vec<u8>> {
+fn read_file(p: &PathBuf) -> io::Result<Vec<u8>> {
     let mut input_file = File::open(p)?;
     let mut buf = Vec::new();
     input_file.read_to_end(&mut buf)?;
