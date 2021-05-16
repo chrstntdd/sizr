@@ -84,6 +84,11 @@ fn main() -> io::Result<()> {
         match &args.kind {
             Some(compression_kinds) => {
                 // TODO: Prevent duplicate formats
+                // TODO: allow more ergonomic single encoding option.
+                // Right now single encoding still requires the ending ","
+                // Ex: `sizr br, ./path/to/file.js`
+                //
+
                 // Print appropriate column labels
                 if has_col_labels == false {
                     let mut col_labels = vec![Cell::new("name")];
