@@ -15,7 +15,7 @@ sizr br,raw ./lib/mod.js
 
 ```shell
 # Pipe `fd` as file input list and get brotli, gzip, and raw sizes
-sizr `fd '.(js|ts)$'`
+sizr `fd --type file '.(js|ts)$'`
 
 # Pipe `find` and print the brotli-encoded size
 sizr br `find . -name '*.js' -o -name '*.ts'`
