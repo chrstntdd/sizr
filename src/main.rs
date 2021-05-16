@@ -86,7 +86,7 @@ fn main() -> io::Result<()> {
                 // TODO: Prevent duplicate formats
                 // TODO: allow more ergonomic single encoding option.
                 // Right now single encoding still requires the ending ","
-                // Ex: `sizr br, ./path/to/file.js`
+                // Ex: `sizr -k br, ./path/to/file.js`
                 //
 
                 // Print appropriate column labels
