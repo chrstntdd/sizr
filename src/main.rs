@@ -124,8 +124,8 @@ fn main() -> io::Result<()> {
                 table.add_row(Row::new(vec![
                     Cell::new(file_name),
                     Cell::new(&byte_fmt::pretty(raw as f64)),
-                    Cell::new(&byte_fmt::pretty(br as f64)),
                     Cell::new(&byte_fmt::pretty(gz as f64)),
+                    Cell::new(&byte_fmt::pretty(br as f64)),
                 ]));
             }
         };
